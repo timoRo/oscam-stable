@@ -1,5 +1,6 @@
 /* Reversed from libcoolstream.so, this comes without any warranty */
 
+#include "oscam-config.h"
 #ifdef COOL
 #define _GNU_SOURCE
 
@@ -450,5 +451,26 @@ void coolapi_close_all()
 	}
 	cnxt_kal_terminate();
 	cnxt_drv_term();
+}
+
+#elif defined(SU980)
+
+unsigned long  cool_kal_opened = 0;
+void coolapi_open_all()
+{
+	printf("coolapi_open_all start\n");
+	cnxt_kal_initialize();
+	cnxt_css_drv_init();
+	cnxt_smc_init (0);
+	cool_kal_opened = 1;
+}
+
+void coolapi_close_all()
+{
+	printf("coolapi_close_all start\n");
+	cool_kal_opened = 0;
+	cnxt_kal_terminate();
+	cnxt_css_drv_term();
+	cnxt_smc_term();
 }
 #endif

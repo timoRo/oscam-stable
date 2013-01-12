@@ -9,7 +9,7 @@
 #  include "openxcas/openxcas_api.h"
 #endif
 #define CS_VERSION_X  CS_VERSION
-#ifdef COOL
+#if defined(COOL) || defined(SU980)
 void coolapi_close_all();
 void coolapi_open_all();
 #endif
@@ -799,7 +799,7 @@ void cs_exit(int32_t sig)
 		if (unlink(targetfile) < 0)
 			cs_log("cannot remove oscam version file %s (errno=%d %s)", targetfile, errno, strerror(errno));
 #endif
-#ifdef COOL
+#if defined(COOL) || defined(SU980)
 		coolapi_close_all();
 #endif
   }
@@ -980,7 +980,7 @@ static void init_first_client()
   cs_lock_create(&readerlist_lock, 5, "readerlist_lock");
   cs_lock_create(&fakeuser_lock, 5, "fakeuser_lock");
 
-#ifdef COOL
+#if defined(COOL) || defined(SU980)
   coolapi_open_all();
 #endif
 }
@@ -3344,7 +3344,7 @@ if (pthread_key_create(&getclient, NULL)) {
   init_signal_pre(); // because log could cause SIGPIPE errors, init a signal handler first
   init_first_client();
   init_config();
-  init_check();
+ // init_check();
 #ifdef WITH_LB
   init_stat();
 #endif

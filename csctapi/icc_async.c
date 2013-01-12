@@ -177,8 +177,8 @@ int32_t ICC_Async_Device_Init (struct s_reader *reader)
 			return ERROR;
 #endif
 		case R_INTERNAL:
-#if defined(COOL)
-			return Cool_Init(reader->device);
+#if defined(COOL) || defined(SU980)
+			return Cool_Init(reader);
 #elif defined(AZBOX)
 			return Azbox_Init(reader);
 #elif defined(SCI_DEV)
@@ -281,8 +281,8 @@ int32_t ICC_Async_GetStatus (struct s_reader *reader, int32_t * card)
 		case R_INTERNAL:
 #if defined(SCI_DEV)
 			call (Sci_GetStatus(reader, &in));
-#elif defined(COOL)
-			call (Cool_GetStatus(&in));
+#elif defined(COOL) || defined(SU980)
+			call (Cool_GetStatus(reader, &in));
 #elif defined(WITH_STAPI)
 			call (STReader_GetStatus(reader->stsmart_handle, &in));
 #elif defined(AZBOX)
@@ -345,8 +345,21 @@ int32_t ICC_Async_Activate (struct s_reader *reader, ATR * atr, uint16_t depreca
 #if defined(SCI_DEV)
 				call (Sci_Activate(reader));
 				call (Sci_Reset(reader, atr));
-#elif defined(COOL)
-				call (Cool_Reset(atr));
+#elif defined(COOL) || defined(SU980)
+				call (Cool_Reset(reader,atr));
+#if 0
+			if ( ! reader->ins7e11_fast_reset) {
+				printf("do Cool_Reset\n");
+				call (Cool_Reset(reader, atr));
+			}
+			else {
+				printf("do fast reset \n");
+				cs_debug_mask(D_DEVICE,"fast reset needed for %s - restoring transmit parameter for coolstream device %s", reader->label, reader->device);
+				call(Cool_Set_Transmit_Timeout(reader, 0));
+				cs_log("Doing fast reset");
+				call (Cool_FastReset_With_ATR(reader, atr));
+			}
+#endif
 #elif defined(WITH_STAPI)
 				call (STReader_Reset(reader->stsmart_handle, atr));
 #elif defined(AZBOX)
@@ -507,8 +520,8 @@ int32_t ICC_Async_Transmit (struct s_reader *reader, uint32_t size, BYTE * data)
 			break;
 #endif
 		case R_INTERNAL:
-#if defined(COOL)
-			call (Cool_Transmit(sent, size));
+#if defined(COOL) || defined(SU980)
+			call (Cool_Transmit(reader, sent, size));
 #elif defined(AZBOX)
 			call (Azbox_Transmit(reader, sent, size));
 #elif defined(SCI_DEV)
@@ -555,8 +568,8 @@ int32_t ICC_Async_Receive (struct s_reader *reader, uint32_t size, BYTE * data)
 			break;
 #endif
 		case R_INTERNAL:
-#if defined(COOL)
-			call (Cool_Receive(data, size));
+#if defined(COOL) || defined(SU980)
+			call (Cool_Receive(reader, data, size));
 #elif defined(AZBOX)
 			call (Azbox_Receive(reader, data, size));
 #elif defined(SCI_DEV)
@@ -609,8 +622,8 @@ int32_t ICC_Async_Close (struct s_reader *reader)
 			call (Phoenix_Close(reader));
 #elif defined(WITH_STAPI)
 			call(STReader_Close(reader->stsmart_handle));
-#elif defined(COOL)
-			call (Cool_Close());
+#elif defined(COOL) || defined(SU980)
+			call (Cool_Close(reader));
 #endif
 			break;
 #ifdef HAVE_PCSC
@@ -906,7 +919,7 @@ static int32_t SetRightParity (struct s_reader * reader)
 		return OK;
 	}
 
-#if defined(COOL) || defined(WITH_STAPI) || defined(AZBOX)
+#if defined(COOL) || defined(SU980) || defined(WITH_STAPI) || defined(AZBOX)
 	if (reader->typ != R_INTERNAL)
 #endif
 #if defined(LIBUSB)
@@ -964,6 +977,7 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 	else
 		EGT = n;
 	GT = EGT + 12; //Guard Time in ETU
+	CGT = GT; //archer
 	gt_ms = ETU_to_ms(reader, GT);
 
 	switch (reader->protocol_type) {
@@ -982,6 +996,7 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 			if (reader->protocol_type == ATR_PROTOCOL_TYPE_T14)
 				WWT >>= 1; //is this correct?
 
+			reader->CWT = WWT; //Archer: I think it should be 960*wi*Di accroding to ISO7816-3 10.2
 			reader->read_timeout = ETU_to_ms(reader, WWT);
 			reader->block_delay = gt_ms;
 			reader->char_delay = gt_ms;
@@ -1081,8 +1096,11 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, BYTE FI, double d,
 			ETU = F / d;
 		call (Sci_WriteSettings (reader, reader->protocol_type, reader->mhz / 100, ETU, WWT, reader->BWT, reader->CWT, EGT, 5, (unsigned char)I)); //P fixed at 5V since this is default class A card, and TB is deprecated
 #elif defined(COOL)
-		call (Cool_SetClockrate(reader->mhz));
+		call (Cool_SetClockrate(reader,reader->mhz));
 		call (Cool_WriteSettings (reader->BWT, reader->CWT, EGT, BGT));
+#elif defined(SU980)
+//		call (Cool_SetClockrate(reader,reader->mhz));
+		call (Cool_WriteSettings (reader, reader->BWT, reader->CWT, CGT, BGT, (uint16_t) atr_f_table[FI], (uint8_t)d));
 #elif defined(WITH_STAPI)
 		call (STReader_SetClockrate(reader->stsmart_handle));
 #endif //COOL

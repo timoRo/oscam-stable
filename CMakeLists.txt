@@ -431,7 +431,7 @@ add_library (${csoscam} STATIC ${csoscam_srcs} ${csoscam_hdrs})
 
 set (exe_name "oscam")
 add_executable (${exe_name} ${exe_srcs} ${exe_hdrs})
-target_link_libraries (${exe_name} ${csoscam} ${csmodules} ${csreaders} csctapi cscrypt algo)
+target_link_libraries (${exe_name} ${csoscam} ${csmodules} ${csreaders} csctapi cscrypt algo liblnxcssUsr.a liblnxUKAL.a libtmplatHandle.a librt.so liblnxplatUsr.a liblnxscsUsr.a liblnxnotifyqUsr.a)
 if(HAVE_LIBRT AND HAVE_LIBUSB)
     target_link_libraries (${exe_name} imp_libusb)
     if (NOT OSCamOperatingSystem MATCHES "Mac OS X")
